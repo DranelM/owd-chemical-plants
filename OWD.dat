@@ -1,0 +1,28 @@
+set SUROWCE := S1 S2;
+set POLPRODUKTY := D1 D2;
+set WYROBY := W1 W2;
+set PROGI_3 := P1 P2 P3;
+
+param przepustowosc_przygotowalnia := 16000;
+param koszt_lokomotywy := 4370;
+param koszt_wagonu := 1290;
+param koszt_ciezarowki := 1500;
+param ladownosc_ciezarowki := 25;
+param max_liczba_wagonow := 12;
+param ladownosc_na_wagon := 18;
+param koszt_pracownika := 160;
+param liczba_pracownikow_na_jednostke_przerobowa := 3;
+param liczba_ton_surowca_na_jednostke_przerobowa := 150;
+
+param: PROGI_SUROWCE: progi_kosztow_surowca: S1 S2 :=
+P1	19	11
+P2	14	13
+P3	10	15
+;
+
+param: PROGI_SUROWCE: progi_liczby_surowcow: S1 S2 :=
+P1	0		0
+P2	2387	2090
+P3	6659	4349
+;
+
