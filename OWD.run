@@ -1,0 +1,9 @@
+reset;
+options solver cplex;
+model OWD.mod;
+data OWD.dat;
+solve;
+display surowce_na_polprodukty;
+display liczba_surowcow_obrobka_cieplna;
+display liczba_polprodoktow;
+display liczba_wyrobow_koncowych;

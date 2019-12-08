@@ -13,16 +13,47 @@ param ladownosc_na_wagon := 18;
 param koszt_pracownika := 160;
 param liczba_pracownikow_na_jednostke_przerobowa := 3;
 param liczba_ton_surowca_na_jednostke_przerobowa := 150;
+param min_liczba_wyrobow := 5000;
+
+param: SUROWCE_NA_WYROBY: przetworzenie_surowce_na_wyroby : W1 W2 :=
+	S1 0 0
+	S2 0 1
+;
+
+param: POLPRODUKTY_NA_WYROBY: przetworzenie_polprodukty_na_wyroby : W1 W2 :=
+	D1 1 0
+	D2 0 1
+;
+
+param max_ton_surowcow := 
+	S1 12000
+	S2 8000
+;
+
+param cena_sprzedazy :=
+	W1 467 
+	W2 480
+;
+
+param progi_obrobka_cieplna :=
+	P1 2000
+	P2 4000
+	P3 6000
+;
 
 param: PROGI_SUROWCE: progi_kosztow_surowca: S1 S2 :=
-P1	19	11
-P2	14	13
-P3	10	15
+	P1	19	11
+	P2	14	13
+	P3	10	15
 ;
 
 param: PROGI_SUROWCE: progi_liczby_surowcow: S1 S2 :=
-P1	0		0
-P2	2387	2090
-P3	6659	4349
+	P1	0		0
+	P2	2387	2090
+	P3	6659	4349
 ;
 
+param: SUROWCE_POLPRODUKTY: proporcje_surowca_do_polproduktow: D1 D2 :=
+	S1	0.1		0.9
+	S2	0.1		0.9
+;
