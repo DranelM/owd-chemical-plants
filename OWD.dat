@@ -13,7 +13,11 @@ param ladownosc_na_wagon := 18;
 param koszt_pracownika := 160;
 param liczba_pracownikow_na_jednostke_przerobowa := 3;
 param liczba_ton_surowca_na_jednostke_przerobowa := 150;
-param min_liczba_wyrobow := 5000;
+
+param min_liczba_wyrobow := 
+	W1 5000
+	W2 5000
+;
 
 param: SUROWCE_NA_WYROBY: przetworzenie_surowce_na_wyroby : W1 W2 :=
 	S1 0 0
@@ -54,6 +58,6 @@ param: PROGI_SUROWCE: progi_liczby_surowcow: S1 S2 :=
 ;
 
 param: SUROWCE_POLPRODUKTY: proporcje_surowca_do_polproduktow: D1 D2 :=
-	S1	0.1		0.9
+	S1	0.9		0.1
 	S2	0.1		0.9
 ;

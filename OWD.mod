@@ -34,7 +34,7 @@ param koszt_pracownika;
 param liczba_pracownikow_na_jednostke_przerobowa;
 param liczba_ton_surowca_na_jednostke_przerobowa;
 param progi_obrobka_cieplna {PROGI_3};
-param min_liczba_wyrobow;
+param min_liczba_wyrobow {WYROBY};
 param przetworzenie_surowce_na_wyroby {SUROWCE_NA_WYROBY};
 param przetworzenie_polprodukty_na_wyroby {POLPRODUKTY_NA_WYROBY};
 
@@ -49,33 +49,45 @@ var liczba_surowcow_przygotowalnia {SUROWCE} >= 0 integer;
 var liczba_surowcow_obrobka_cieplna {SUROWCE} >= 0 integer;
 var surowce_na_polprodukty {SUROWCE_POLPRODUKTY} >= 0 integer; 
 var zakupione_surowce_kazdego_progu {PROGI_SUROWCE} >= 0 integer;
-var suma_zakupionych_surowcow {SUROWCE} >= 0 integer;
-var koszt_zakupionych_surowcow = sum {(p, s) in PROGI_SUROWCE} (zakupione_surowce_kazdego_progu[p, s] * progi_kosztow_surowca[p, s]);
 var liczba_zakupionych_surowcow {s in SUROWCE} = sum {p in PROGI_3} zakupione_surowce_kazdego_progu[p, s];
+var koszt_zakupionych_surowcow = sum {(p, s) in PROGI_SUROWCE} (zakupione_surowce_kazdego_progu[p, s] * progi_kosztow_surowca[p, s]);
 
 # TRANSPORT
-var koszt_transportu_S1 = ((suma_zakupionych_surowcow['S1']/ladownosc_na_wagon) * koszt_wagonu) + ((suma_zakupionych_surowcow['S1'] / ladownosc_na_wagon / max_liczba_wagonow) * koszt_lokomotywy);
-var koszt_transportu_S2 = ((suma_zakupionych_surowcow['S2'])/ladownosc_ciezarowki) * koszt_ciezarowki;
+var c1 integer >= 0;
+var c2 integer >= 0;
+var c3 integer >= 0;
+var liczba_potrzebnych_wagonow integer >= 0;
+var liczba_potrzebnych_lokomotyw integer >= 0;
+var liczba_potrzebnych_ciezarowek integer >= 0;
+
+# var koszt_transportu_S1 = ((liczba_zakupionych_surowcow['S1']/ladownosc_na_wagon) * koszt_wagonu) + ((liczba_zakupionych_surowcow['S1'] / ladownosc_na_wagon / max_liczba_wagonow) * koszt_lokomotywy);
+var koszt_transportu_S1 = (liczba_potrzebnych_wagonow * koszt_wagonu) + (liczba_potrzebnych_lokomotyw * koszt_lokomotywy);
+var koszt_transportu_S2 = liczba_potrzebnych_ciezarowek * koszt_ciezarowki;
 var koszty_transportu = koszt_transportu_S1 + koszt_transportu_S2;
 
 # PRZYGOTOWALNIA
 var liczba_pracownikow_przygotowalni  = liczba_pracownikow_na_jednostke_przerobowa * sum {s in SUROWCE} liczba_surowcow_przygotowalnia[s] / liczba_ton_surowca_na_jednostke_przerobowa;
 var koszt_pracy_przygotowalni = liczba_pracownikow_przygotowalni * koszt_pracownika;
-var liczba_polprodoktow {POLPRODUKTY};
+var liczba_polprodoktow {POLPRODUKTY} >= 0 integer;
 
 # OBROBKA CIEPLNA
 var obrobka_progi_binary {PROGI_3} binary;
 var koszt_obrobki_cieplnej = obrobka_progi_binary['P2']*10000 + obrobka_progi_binary['P3']*40000;
 
 # WYROBY KONCOWE
-var liczba_wyrobow_koncowych {WYROBY} integer >= 0;
+# var liczba_wyrobow_koncowych {WYROBY} integer >= 0;
+var liczba_wyrobow_koncowych {w in WYROBY} = sum {d in POLPRODUKTY} (liczba_polprodoktow[d] * przetworzenie_polprodukty_na_wyroby[d, w]) + sum {s in SUROWCE} (liczba_surowcow_obrobka_cieplna[s] * przetworzenie_surowce_na_wyroby[s, w]);
+var niedobory_produktow = sum {w in WYROBY} (min_liczba_wyrobow[w] - liczba_wyrobow_koncowych[w]);
 var dochod_z_wyrobow = sum {w in WYROBY} (liczba_wyrobow_koncowych[w] * cena_sprzedazy[w]);  
+
 
 #===================#
 #   Funkcja Celu    #
 #===================#
-# minimize koszty:  koszt_obrobki_cieplnej + koszt_pracy_przygotowalni + koszt_zakupionych_surowcow + koszty_transportu;
-maximize koszty: koszt_pracy_przygotowalni;
+# minimize koszty:  koszt_obrobki_cieplnej + koszt_pracy_przygotowalni + koszt_zakupionych_surowcow + koszty_transportu + niedobory_produktow;
+# maximize dochod: dochod_z_wyrobow - koszt_pracy_przygotowalni + koszt_zakupionych_surowcow + niedobory_produktow;
+minimize koszty: koszty_transportu;
+
 
 
 
@@ -84,15 +96,23 @@ maximize koszty: koszt_pracy_przygotowalni;
 #===================#
 
 # Wyroby koncowe
-s.t. OgrWyrobyKoncowe {w in WYROBY}: liczba_wyrobow_koncowych[w] <= sum {d in POLPRODUKTY} (liczba_polprodoktow[d] * przetworzenie_polprodukty_na_wyroby[d, w]) + sum {s in SUROWCE} (liczba_surowcow_obrobka_cieplna[s] * przetworzenie_surowce_na_wyroby[s, w]);
-s.t. OgrLiczbaWyrobowMIN {w in WYROBY}: liczba_wyrobow_koncowych[w] >= min_liczba_wyrobow;
+s.t. OgrLiczbaWyrobowMIN {w in WYROBY}: liczba_wyrobow_koncowych[w] >= min_liczba_wyrobow[w];
 s.t. OgrLiczbaWyrobowMAX : sum {w in WYROBY} liczba_wyrobow_koncowych[w] <= sum {s in SUROWCE} max_ton_surowcow[s];
 
+# transport
+s.t. WyliczenieLiczbyWagonow: liczba_zakupionych_surowcow['S1'] >= liczba_potrzebnych_wagonow * ladownosc_na_wagon - c1;
+s.t. WyliczenieLiczbyLokomotyw: liczba_potrzebnych_wagonow >= liczba_potrzebnych_lokomotyw * max_liczba_wagonow - c2;
+s.t. WyliczenieLiczbyCiezarowek: liczba_zakupionych_surowcow['S2'] >= liczba_potrzebnych_ciezarowek * ladownosc_ciezarowki - c3;
+# (TODO poprawić to bo coś nie śmiga)
+
+# Surowce
+s.t. MaksWykorzystaniaSurowcow {s in SUROWCE}: sum {d in POLPRODUKTY} surowce_na_polprodukty[s, d] + liczba_surowcow_obrobka_cieplna[s] <= sum {p in PROGI_3} zakupione_surowce_kazdego_progu[p, s];  
 
 # Polprodukty
 s.t. OgrPrzepustowoscPrzygotowalnia: sum {s in SUROWCE} liczba_surowcow_przygotowalnia[s] <= przepustowosc_przygotowalnia;
 s.t. OgrPrzepustowoscPrzygotowalnia2 {s in SUROWCE}: liczba_surowcow_przygotowalnia[s] <= sum {p in PROGI_3} zakupione_surowce_kazdego_progu[p, s];
 s.t. OgrPolprodukty2 {s in SUROWCE} : sum {d in POLPRODUKTY} surowce_na_polprodukty[s, d] <= liczba_surowcow_przygotowalnia[s];
+s.t. OgrMaxIlosc {s in SUROWCE}: liczba_surowcow_przygotowalnia[s] + liczba_surowcow_obrobka_cieplna[s] <= max_ton_surowcow[s]; 
 
 s.t. asf {d in POLPRODUKTY}: liczba_polprodoktow[d] <= sum {s in SUROWCE} (proporcje_surowca_do_polproduktow[s, d] *  surowce_na_polprodukty[s, d]);
 
@@ -125,7 +145,6 @@ s.t. kupno_p2s2_max: zakupione_surowce_kazdego_progu['P2','S2'] <= progi_liczby_
 s.t. kupno_p3s2_min: zakupione_surowce_kazdego_progu['P3','S2'] >= 0;
 s.t. kupno_p3s2_max: zakupione_surowce_kazdego_progu['P3','S2'] <= max_ton_surowcow['S2'] - progi_liczby_surowcow['P3', 'S2'];
 
-s.t. suma_surowcow {s in SUROWCE}: suma_zakupionych_surowcow[s] >= sum {p in PROGI_3} zakupione_surowce_kazdego_progu[p, s];
 ###### TODO ######
 
 # poprawic transport, bo nie mozna ceil()

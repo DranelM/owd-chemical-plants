@@ -3,7 +3,15 @@ options solver cplex;
 model OWD.mod;
 data OWD.dat;
 solve;
+display {s in SUROWCE} sum {p in PROGI_3} zakupione_surowce_kazdego_progu[p, s];
+display liczba_potrzebnych_wagonow;
+display liczba_potrzebnych_lokomotyw;
+display liczba_potrzebnych_ciezarowek;
+
+
 display surowce_na_polprodukty;
 display liczba_surowcow_obrobka_cieplna;
 display liczba_polprodoktow;
 display liczba_wyrobow_koncowych;
+display {w in WYROBY} sum {d in POLPRODUKTY} (liczba_polprodoktow[d] * przetworzenie_polprodukty_na_wyroby[d, w]);
+display {w in WYROBY} sum {s in SUROWCE} (liczba_surowcow_obrobka_cieplna[s] * przetworzenie_surowce_na_wyroby[s, w]);
