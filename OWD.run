@@ -12,6 +12,6 @@ display liczba_potrzebnych_ciezarowek;
 display surowce_na_polprodukty;
 display liczba_surowcow_obrobka_cieplna;
 display liczba_polprodoktow;
-display liczba_wyrobow_koncowych;
 display {w in WYROBY} sum {d in POLPRODUKTY} (liczba_polprodoktow[d] * przetworzenie_polprodukty_na_wyroby[d, w]);
 display {w in WYROBY} sum {s in SUROWCE} (liczba_surowcow_obrobka_cieplna[s] * przetworzenie_surowce_na_wyroby[s, w]);
+display liczba_wyrobow_koncowych;

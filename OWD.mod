@@ -53,14 +53,13 @@ var liczba_zakupionych_surowcow {s in SUROWCE} = sum {p in PROGI_3} zakupione_su
 var koszt_zakupionych_surowcow = sum {(p, s) in PROGI_SUROWCE} (zakupione_surowce_kazdego_progu[p, s] * progi_kosztow_surowca[p, s]);
 
 # TRANSPORT
-var c1 integer >= 0;
-var c2 integer >= 0;
-var c3 integer >= 0;
-var liczba_potrzebnych_wagonow integer >= 0;
+var c1 integer >= 0; # reszta pomocnicza w liczeniu wagonow
+var c2 integer >= 0; # reszta pomocnicza w liczeniu lokomotyw
+var c3 integer >= 0; # reszta pomocnicza w liczeniu ciezarowek
 var liczba_potrzebnych_lokomotyw integer >= 0;
 var liczba_potrzebnych_ciezarowek integer >= 0;
+var liczba_potrzebnych_wagonow integer >=0;
 
-# var koszt_transportu_S1 = ((liczba_zakupionych_surowcow['S1']/ladownosc_na_wagon) * koszt_wagonu) + ((liczba_zakupionych_surowcow['S1'] / ladownosc_na_wagon / max_liczba_wagonow) * koszt_lokomotywy);
 var koszt_transportu_S1 = (liczba_potrzebnych_wagonow * koszt_wagonu) + (liczba_potrzebnych_lokomotyw * koszt_lokomotywy);
 var koszt_transportu_S2 = liczba_potrzebnych_ciezarowek * koszt_ciezarowki;
 var koszty_transportu = koszt_transportu_S1 + koszt_transportu_S2;
@@ -75,7 +74,6 @@ var obrobka_progi_binary {PROGI_3} binary;
 var koszt_obrobki_cieplnej = obrobka_progi_binary['P2']*10000 + obrobka_progi_binary['P3']*40000;
 
 # WYROBY KONCOWE
-# var liczba_wyrobow_koncowych {WYROBY} integer >= 0;
 var liczba_wyrobow_koncowych {w in WYROBY} = sum {d in POLPRODUKTY} (liczba_polprodoktow[d] * przetworzenie_polprodukty_na_wyroby[d, w]) + sum {s in SUROWCE} (liczba_surowcow_obrobka_cieplna[s] * przetworzenie_surowce_na_wyroby[s, w]);
 var niedobory_produktow = sum {w in WYROBY} (min_liczba_wyrobow[w] - liczba_wyrobow_koncowych[w]);
 var dochod_z_wyrobow = sum {w in WYROBY} (liczba_wyrobow_koncowych[w] * cena_sprzedazy[w]);  
@@ -85,10 +83,9 @@ var dochod_z_wyrobow = sum {w in WYROBY} (liczba_wyrobow_koncowych[w] * cena_spr
 #   Funkcja Celu    #
 #===================#
 # minimize koszty:  koszt_obrobki_cieplnej + koszt_pracy_przygotowalni + koszt_zakupionych_surowcow + koszty_transportu + niedobory_produktow;
-# maximize dochod: dochod_z_wyrobow - koszt_pracy_przygotowalni + koszt_zakupionych_surowcow + niedobory_produktow;
-minimize koszty: koszty_transportu;
-
-
+# minimize koszty: koszt_obrobki_cieplnej + koszt_pracy_przygotowalni + koszt_zakupionych_surowcow + koszty_transportu + niedobory_produktow;
+# minimize koszty: koszty_transportu;
+maximize dochod: dochod_z_wyrobow - koszt_pracy_przygotowalni - koszt_zakupionych_surowcow - koszt_obrobki_cieplnej - koszty_transportu;
 
 
 #===================#
@@ -100,10 +97,9 @@ s.t. OgrLiczbaWyrobowMIN {w in WYROBY}: liczba_wyrobow_koncowych[w] >= min_liczb
 s.t. OgrLiczbaWyrobowMAX : sum {w in WYROBY} liczba_wyrobow_koncowych[w] <= sum {s in SUROWCE} max_ton_surowcow[s];
 
 # transport
-s.t. WyliczenieLiczbyWagonow: liczba_zakupionych_surowcow['S1'] >= liczba_potrzebnych_wagonow * ladownosc_na_wagon - c1;
-s.t. WyliczenieLiczbyLokomotyw: liczba_potrzebnych_wagonow >= liczba_potrzebnych_lokomotyw * max_liczba_wagonow - c2;
-s.t. WyliczenieLiczbyCiezarowek: liczba_zakupionych_surowcow['S2'] >= liczba_potrzebnych_ciezarowek * ladownosc_ciezarowki - c3;
-# (TODO poprawić to bo coś nie śmiga)
+s.t. WyliczenieLiczbyWagonow: liczba_zakupionych_surowcow['S1'] = liczba_potrzebnych_wagonow * ladownosc_na_wagon - c1;
+s.t. WyliczenieLiczbyLokomotyw: liczba_potrzebnych_wagonow = liczba_potrzebnych_lokomotyw * max_liczba_wagonow - c2;
+s.t. WyliczenieLiczbyCiezarowek: liczba_zakupionych_surowcow['S2'] = liczba_potrzebnych_ciezarowek * ladownosc_ciezarowki - c3;
 
 # Surowce
 s.t. MaksWykorzystaniaSurowcow {s in SUROWCE}: sum {d in POLPRODUKTY} surowce_na_polprodukty[s, d] + liczba_surowcow_obrobka_cieplna[s] <= sum {p in PROGI_3} zakupione_surowce_kazdego_progu[p, s];  
@@ -144,7 +140,3 @@ s.t. kupno_p2s2_min: zakupione_surowce_kazdego_progu['P2','S2'] >= 0;
 s.t. kupno_p2s2_max: zakupione_surowce_kazdego_progu['P2','S2'] <= progi_liczby_surowcow['P3', 'S2'] - progi_liczby_surowcow['P2', 'S2'];
 s.t. kupno_p3s2_min: zakupione_surowce_kazdego_progu['P3','S2'] >= 0;
 s.t. kupno_p3s2_max: zakupione_surowce_kazdego_progu['P3','S2'] <= max_ton_surowcow['S2'] - progi_liczby_surowcow['P3', 'S2'];
-
-###### TODO ######
-
-# poprawic transport, bo nie mozna ceil()
