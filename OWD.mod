@@ -47,7 +47,6 @@ var u1 binary; # zmienna binarna dla pierwszego progu surowca 1
 var u2 binary; # zmienna binarna dla drugiego progu surowca 1
 var liczba_surowcow_przygotowalnia {SUROWCE} >= 0 integer;
 var liczba_surowcow_obrobka_cieplna {SUROWCE} >= 0 integer;
-var surowce_na_polprodukty {SUROWCE_POLPRODUKTY} >= 0 integer; 
 var zakupione_surowce_kazdego_progu {PROGI_SUROWCE} >= 0 integer;
 var liczba_zakupionych_surowcow {s in SUROWCE} = sum {p in PROGI_3} zakupione_surowce_kazdego_progu[p, s];
 var koszt_zakupionych_surowcow = sum {(p, s) in PROGI_SUROWCE} (zakupione_surowce_kazdego_progu[p, s] * progi_kosztow_surowca[p, s]);
@@ -73,12 +72,13 @@ var koszt_obrobki_cieplnej = obrobka_progi_binary['P2']*10000 + obrobka_progi_bi
 # WYROBY KONCOWE
 var liczba_wyrobow_koncowych {w in WYROBY} = sum {d in POLPRODUKTY} (liczba_polprodoktow[d] * przetworzenie_polprodukty_na_wyroby[d, w]) + sum {s in SUROWCE} (liczba_surowcow_obrobka_cieplna[s] * przetworzenie_surowce_na_wyroby[s, w]);
 var dochod_z_wyrobow = sum {w in WYROBY} (liczba_wyrobow_koncowych[w] * cena_sprzedazy[w]);  
-
+var niedobory_kazdego_wyrobu {WYROBY}  >= 0 integer;
+var niedobory_suma = sum {w in WYROBY} niedobory_kazdego_wyrobu[w];
 
 #===================#
 #   Funkcja Celu    #
 #===================#
-minimize koszty:  koszt_zakupionych_surowcow + koszty_transportu + koszt_obrobki_cieplnej + koszt_pracy_przygotowalni;
+minimize koszty:  koszt_zakupionych_surowcow + koszty_transportu + koszt_obrobki_cieplnej + koszt_pracy_przygotowalni + niedobory_suma;
 # maximize dochod: dochod_z_wyrobow - koszt_zakupionych_surowcow - koszty_transportu - koszt_obrobki_cieplnej - koszt_pracy_przygotowalni;
 
 #===================#
@@ -86,7 +86,7 @@ minimize koszty:  koszt_zakupionych_surowcow + koszty_transportu + koszt_obrobki
 #===================#
 
 # Surowce
-s.t. MaksWykorzystaniaSurowcow {s in SUROWCE}: sum {d in POLPRODUKTY} surowce_na_polprodukty[s, d] + liczba_surowcow_obrobka_cieplna[s] = liczba_zakupionych_surowcow[s];  
+s.t. MaksWykorzystaniaSurowcow {s in SUROWCE}: liczba_surowcow_przygotowalnia[s] + liczba_surowcow_obrobka_cieplna[s] = liczba_zakupionych_surowcow[s];  
 s.t. OgrMaxIlosc {s in SUROWCE}: liczba_zakupionych_surowcow[s] <= max_ton_surowcow[s]; 
 
 # Kupno surowcow S1
@@ -118,8 +118,7 @@ s.t. WyliczenieLiczbyCiezarowek: liczba_zakupionych_surowcow['S2'] <= liczba_pot
 # Polprodukty
 s.t. OgrPrzepustowoscPrzygotowalnia: sum {s in SUROWCE} liczba_surowcow_przygotowalnia[s] <= przepustowosc_przygotowalnia;
 s.t. OgrPrzepustowoscPrzygotowalnia2 {s in SUROWCE}: liczba_surowcow_przygotowalnia[s] <= sum {p in PROGI_3} zakupione_surowce_kazdego_progu[p, s];
-s.t. OgrPolprodukty_Surowce {s in SUROWCE} : sum {d in POLPRODUKTY} surowce_na_polprodukty[s, d] <= liczba_surowcow_przygotowalnia[s];
-s.t. OgrLiczbyPolproduktow {d in POLPRODUKTY}: liczba_polprodoktow[d] <= sum {s in SUROWCE} (proporcje_surowca_do_polproduktow[s, d] *  surowce_na_polprodukty[s, d]);
+s.t. OgrLiczbyPolproduktow {d in POLPRODUKTY}: liczba_polprodoktow[d] <= sum {s in SUROWCE} (proporcje_surowca_do_polproduktow[s, d] * liczba_surowcow_przygotowalnia[s]);
 
 # Obrobka cieplna
 s.t. OgrObrobkaS1: liczba_surowcow_obrobka_cieplna['S1'] <= 0;
@@ -132,3 +131,7 @@ s.t. OgrObrobkaP3max: sum {s in SUROWCE} liczba_surowcow_obrobka_cieplna[s] <= o
 # Wyroby koncowe
 s.t. OgrLiczbaWyrobowMIN {w in WYROBY}: liczba_wyrobow_koncowych[w] >= min_liczba_wyrobow[w];
 s.t. OgrLiczbaWyrobowMAX : sum {w in WYROBY} liczba_wyrobow_koncowych[w] <= sum {s in SUROWCE} max_ton_surowcow[s];
+s.t. OgrNiedobory {w in WYROBY}:  min_liczba_wyrobow[w] - liczba_wyrobow_koncowych[w] <= niedobory_kazdego_wyrobu[w];
+
+# TODO: 
+	# metoda punktu odniesienia 
