@@ -37,6 +37,7 @@ param progi_obrobka_cieplna {PROGI_3}; # progi cen w obróbce cieplnej
 param min_liczba_wyrobow {WYROBY}; # minimalna liczba wyrobów wymagana przez kontrahentów do dostarczenia
 param przetworzenie_surowce_na_wyroby {SUROWCE_NA_WYROBY}; # pomocnicza macierz do zamiany surowców na wyroby
 param przetworzenie_polprodukty_na_wyroby {POLPRODUKTY_NA_WYROBY}; # pomocnicza macierz do zamiany półproduktów na wyroby
+param niedobor_referencja {WYROBY}; # referencja dla niedoboru wyrobów
 
 #==============#
 #    Zmienne   #
@@ -50,7 +51,6 @@ var liczba_surowcow_obrobka_cieplna {SUROWCE} >= 0 integer; # liczba surowców t
 var zakupione_surowce_kazdego_progu {PROGI_SUROWCE} >= 0 integer; # liczba zakupionych surowców każdego progu
 var liczba_zakupionych_surowcow {s in SUROWCE} = sum {p in PROGI_3} zakupione_surowce_kazdego_progu[p, s]; # liczba zakupionych surowców
 var koszt_zakupionych_surowcow = sum {(p, s) in PROGI_SUROWCE} (zakupione_surowce_kazdego_progu[p, s] * progi_kosztow_surowca[p, s]); # pełny koszt zakupionych surowców
-
 
 # TRANSPORT
 var liczba_potrzebnych_lokomotyw integer >= 0; # liczba lokomotyw potrzebnych do przewozu zakupionych surowców
@@ -68,19 +68,12 @@ var liczba_polprodoktow {POLPRODUKTY} >= 0 integer; # liczba półproduktów stw
 
 # OBROBKA CIEPLNA
 var obrobka_progi_binary {PROGI_3} binary; # progi kosztu działania obróbki cieplnej
-var koszt_obrobki_cieplnej = obrobka_progi_binary['P2']*10000 + obrobka_progi_binary['P3']*40000; # całkowity koszt obróbki cieplnej
+var koszt_obrobki_cieplnej = (obrobka_progi_binary['P1'] - obrobka_progi_binary['P2'])*10000 + obrobka_progi_binary['P2']*40000; # całkowity koszt obróbki cieplnej
 
 # WYROBY KONCOWE
 var liczba_wyrobow_koncowych {w in WYROBY} = sum {d in POLPRODUKTY} (liczba_polprodoktow[d] * przetworzenie_polprodukty_na_wyroby[d, w]) + sum {s in SUROWCE} (liczba_surowcow_obrobka_cieplna[s] * przetworzenie_surowce_na_wyroby[s, w]); # liczba wyrobów końcowych stworzonych z zakupionych surowców oraz przetworzonych półproduktów 
-var dochod_z_wyrobow = sum {w in WYROBY} (liczba_wyrobow_koncowych[w] * cena_sprzedazy[w]);   # całkowity dochód ze sprzedaży wyprodukowanych wyrobów
 var niedobory_kazdego_wyrobu {WYROBY}  >= 0 integer; # niedobory dla każdego wyrobu
-var niedobory_suma = sum {w in WYROBY} niedobory_kazdego_wyrobu[w]; # całkowity niedobór wszystkich wyrobów
-
-#===================#
-#   Funkcja Celu    #
-#===================#
-minimize koszty:  koszt_zakupionych_surowcow + koszty_transportu + koszt_obrobki_cieplnej + koszt_pracy_przygotowalni + niedobory_suma;
-# maximize dochod: dochod_z_wyrobow - koszt_zakupionych_surowcow - koszty_transportu - koszt_obrobki_cieplnej - koszt_pracy_przygotowalni;
+var calkowity_koszt_produkcji = koszt_zakupionych_surowcow + koszty_transportu + koszt_pracy_przygotowalni + koszt_obrobki_cieplnej;
 
 #===================#
 #   Ograniczenia    #
@@ -111,29 +104,64 @@ s.t. kupno_p2s2_max: zakupione_surowce_kazdego_progu['P2','S2'] <= progi_liczby_
 s.t. kupno_p3s2_min: zakupione_surowce_kazdego_progu['P3','S2'] >= 0; # ograniczenie dolne progu 3 dla surowca 2
 s.t. kupno_p3s2_max: zakupione_surowce_kazdego_progu['P3','S2'] <= max_ton_surowcow['S2'] - progi_liczby_surowcow['P3', 'S2']; # ograniczenie górne progu 3 dla surowca 2
 
-# Transport
+# Transport 1946351
 s.t. WyliczenieLiczbyWagonow: liczba_zakupionych_surowcow['S1'] <= liczba_potrzebnych_wagonow * ladownosc_na_wagon; # liczba wagonów musi odpowiadać liczbie surowców podzielonej przez ładowność wagonów
 s.t. WyliczenieLiczbyLokomotyw: liczba_potrzebnych_wagonow <= liczba_potrzebnych_lokomotyw * max_liczba_wagonow ; # każda lokomotywa może mieć określoną maksymalną liczbe wagonów
 s.t. WyliczenieLiczbyCiezarowek: liczba_zakupionych_surowcow['S2'] <= liczba_potrzebnych_ciezarowek * ladownosc_ciezarowki; # liczba ciężarówek względem zakupionych surowców i ładowności pojazdu
 
-# Polprodukty
+# Polprodukty (Przygotowalnia)
 s.t. OgrPrzepustowoscPrzygotowalnia: sum {s in SUROWCE} liczba_surowcow_przygotowalnia[s] <= przepustowosc_przygotowalnia; # przygotowalnia ma określoną maksymalną przepustowość
 s.t. OgrPrzepustowoscPrzygotowalnia2 {s in SUROWCE}: liczba_surowcow_przygotowalnia[s] <= sum {p in PROGI_3} zakupione_surowce_kazdego_progu[p, s]; # liczba zakupionych surowców nie może być większa niż liczba surowców dostarczonych do przygotowalni
-s.t. OgrLiczbyPolproduktow {d in POLPRODUKTY}: liczba_polprodoktow[d] <= sum {s in SUROWCE} (proporcje_surowca_do_polproduktow[s, d] * liczba_surowcow_przygotowalnia[s]); # przekształcenie surowców w półprodukty na podstawie tabeli w poleceniu
+s.t. OgrLiczbyPolproduktow {d in POLPRODUKTY}: liczba_polprodoktow[d] = sum {s in SUROWCE} (proporcje_surowca_do_polproduktow[s, d] * liczba_surowcow_przygotowalnia[s]); # przekształcenie surowców w półprodukty na podstawie tabeli w poleceniu
 
 # Obrobka cieplna
 s.t. OgrObrobkaS1: liczba_surowcow_obrobka_cieplna['S1'] <= 0; # Obróbka cieplna nie obsługuje surowca S1
 s.t. OgrObrobkaS2: liczba_surowcow_obrobka_cieplna['S2'] >= 0; # Ograniczenie dolne liczby surowców S2 w soróbce cieplnej
-s.t. OgrObrobkaP1min: sum {s in SUROWCE} liczba_surowcow_obrobka_cieplna[s] >= obrobka_progi_binary['P1'] * 0; # ograniczenie dolne dla pierwszego progu kosztu obróbki cieplnej
-s.t. OgrObrobkaP2min: sum {s in SUROWCE} liczba_surowcow_obrobka_cieplna[s] >= obrobka_progi_binary['P2'] * (progi_obrobka_cieplna['P1'] + 1); # ograniczenie dolne dla drugiego progu kosztu obróbki cieplnej
-s.t. OgrObrobkaP3min: sum {s in SUROWCE} liczba_surowcow_obrobka_cieplna[s] >= obrobka_progi_binary['P3'] * (progi_obrobka_cieplna['P2'] + 1); # ograniczenie dolne dla trzeciego progu kosztu obróbki cieplnej
-s.t. OgrObrobkaP3max: sum {s in SUROWCE} liczba_surowcow_obrobka_cieplna[s] <= obrobka_progi_binary['P3'] * progi_obrobka_cieplna['P3']; # ograniczenie górne dla trzeciego progu kosztu obróbki cieplnej
-
+s.t. OgrObrobkaP1min: (sum {s in SUROWCE} liczba_surowcow_obrobka_cieplna[s] - (progi_obrobka_cieplna['P1']))/10000000 <= obrobka_progi_binary['P1']; # ograniczenie dla pierwszego progu kosztu 
+s.t. OgrObrobkaP2min: (sum {s in SUROWCE} liczba_surowcow_obrobka_cieplna[s] - (progi_obrobka_cieplna['P2']))/10000000 <= obrobka_progi_binary['P2']; # ograniczenie dla drugiego progu kosztu 
+s.t. OgrObrobkaMax: sum {s in SUROWCE} liczba_surowcow_obrobka_cieplna[s] <= progi_obrobka_cieplna['P3'] ; # ograniczenie górne dla trzeciego progu kosztu obróbki cieplnej
 
 # Wyroby koncowe
-s.t. OgrLiczbaWyrobowMIN {w in WYROBY}: liczba_wyrobow_koncowych[w] >= min_liczba_wyrobow[w]; # minimalna liczba wyrobów do wyprodukowania 
 s.t. OgrLiczbaWyrobowMAX : sum {w in WYROBY} liczba_wyrobow_koncowych[w] <= sum {s in SUROWCE} max_ton_surowcow[s]; # liczba wyrobów nie może przekraczać liczby zakupionych surowców
-s.t. OgrNiedobory {w in WYROBY}:  min_liczba_wyrobow[w] - liczba_wyrobow_koncowych[w] <= niedobory_kazdego_wyrobu[w]; # wyliczenie niedoborów wyprodukowanych wyrobów
+s.t. OgrNiedobory_max {w in WYROBY}: niedobory_kazdego_wyrobu[w] <= min_liczba_wyrobow[w]; 
+s.t. OgrNiedobory {w in WYROBY}: niedobory_kazdego_wyrobu[w] >= (min_liczba_wyrobow[w] - liczba_wyrobow_koncowych[w]);
+# s.t. OgrLiczbaWyrobowMIN {w in WYROBY}: liczba_wyrobow_koncowych[w] >= min_liczba_wyrobow[w]; # minimalna liczba wyrobów do wyprodukowania 
 
-# TODO: 
-	# metoda punktu odniesienia 
+#############################
+# Metoda punktu odniesienia #
+#############################
+
+set KRYTERIA;
+
+param epsilon; # skladnik regularyzujacy, gwarantujacy efektywnosc rozwiazania - arbitralnie mała stała (1e-4) podzielona przez liczbe kryteriow (4)
+param beta; # maly parametr dodatni, najczesciej przyjmuje sie 1e-3
+param cel {k in KRYTERIA};  # cel dla : koszt_calkowity, koszt_obrobki_cieplnej, niedobor_W1, niedobor_W2
+param utopia {k in KRYTERIA}; # wartości utopii dla pojedynczego kryterium
+param nadir {k in KRYTERIA}; # wartości nadiru dla pojedynczego kryterium
+param lambda {k in KRYTERIA}; #  = 1/(utopia[k] - nadir[k]);
+
+var z {k in KRYTERIA}; # wartosci indywidualnych funkcji osiagniecia
+var v; # minimum z 'z[k]' dla k = 1, .. , 4
+var kryterium {k in KRYTERIA} =
+	if k = 'K1' then calkowity_koszt_produkcji
+	else if k = 'K2' then koszt_obrobki_cieplnej
+	else if k = 'K3' then niedobory_kazdego_wyrobu['W1']
+	else if k = 'K4' then niedobory_kazdego_wyrobu['W2'];
+
+# ograniczenia dla metody punktu odniesienia
+s.t. mpo_wyznaczenie_v {k in KRYTERIA}:  v <= z[k];
+s.t. mpo_kryteria_warunek1 {k in KRYTERIA}: z[k] <= beta*lambda[k]*(cel[k] - kryterium[k]);
+s.t. mpo_kryteria_warunek2 {k in KRYTERIA}: z[k] <= beta*(cel[k] - kryterium[k]);
+
+#===================#	
+#   Funkcja Celu    #
+#===================#
+maximize f_celu: v + epsilon*(sum {k in KRYTERIA} z[k]);
+# minimize K1_utopia: calkowity_koszt_produkcji; # 871060
+# minimize K2_utopia: koszt_obrobki_cieplnej; # 0
+# minimize K3_utopia: niedobory_kazdego_wyrobu['W1']; # 0
+# minimize K4_utopia: niedobory_kazdego_wyrobu['W2']; # 0 
+# maximize K1_nadir: calkowity_koszt_produkcji;  # 1927027
+# maximize K2_nadir: koszt_obrobki_cieplnej; # 40000
+# maximize K3_nadir: niedobory_kazdego_wyrobu['W1']; # 5000
+# maximize K4_nadir: niedobory_kazdego_wyrobu['W2']; # 5000

@@ -14,6 +14,7 @@ param koszt_pracownika := 160;
 param liczba_pracownikow_na_jednostke_przerobowa := 3;
 param liczba_ton_surowca_na_jednostke_przerobowa := 150;
 
+
 param min_liczba_wyrobow := 
 	W1 5000
 	W2 5000
@@ -61,3 +62,44 @@ param: SUROWCE_POLPRODUKTY: proporcje_surowca_do_polproduktow: D1 D2 :=
 	S1	0.9		0.1
 	S2	0.9		0.1
 ;
+
+
+#############################
+# Metoda punktu odniesienia #
+#############################
+
+set KRYTERIA := K1 K2 K3 K4;
+
+param epsilon := 0.00025;
+param beta := 0.01;
+
+# ustawiane przez użytkownika punkty aspiracji dla każdego kryterium
+param cel := 
+	K1 871060
+	K2 40000
+	K3 0
+	K4 0
+;
+
+param lambda := 
+	K1 1
+	K2 1
+	K3 1
+	K4 1
+;
+
+param utopia := 
+	K1	833204
+	K2	0
+	K3	0
+	K4	0
+;
+
+param nadir := 
+	K1	1887027
+	K2	40000
+	K3	5000
+	K4	5000
+;
+
+
